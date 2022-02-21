@@ -21,11 +21,12 @@ from selfdrive.version import get_commit
 from tools.lib.framereader import FrameReader
 from tools.lib.logreader import LogReader
 
+TICI = True
 if TICI:
-  TEST_ROUTE = "4cf7a6ad03080c90|2021-09-29--13-46-36"
+  TEST_ROUTE = "4aa5d874f367adbc|2022-02-19--19-45-14"
 else:
   TEST_ROUTE = "303055c0002aefd1|2021-11-22--18-36-32"
-SEGMENT = 0
+SEGMENT = 10
 
 SEND_EXTRA_INPUTS = bool(os.getenv("SEND_EXTRA_INPUTS", "0"))
 
@@ -77,9 +78,13 @@ def model_replay(lr, frs):
     for msg in lr:
       msgs[msg.which()].append(msg)
 
+    cnt = 0
     for cam_msgs in zip_longest(msgs['roadCameraState'], msgs['wideRoadCameraState'], msgs['driverCameraState']):
+      print(cnt)
+      cnt += 1
       # need a pair of road/wide msgs
       if TICI and None in (cam_msgs[0], cam_msgs[1]):
+        print('breaking here')
         break
 
       for msg in cam_msgs:
@@ -125,6 +130,8 @@ def model_replay(lr, frs):
                          frs['roadCameraState'].frame_count, frame_idxs['driverCameraState'], frs['driverCameraState'].frame_count))
 
       if any(frame_idxs[c] >= frs[c].frame_count for c in frame_idxs.keys()):
+        print([(frame_idxs[c], frs[c].frame_count) for c in frame_idxs.keys()])
+        print('breaking there')
         break
 
   finally:
@@ -153,6 +160,10 @@ if __name__ == "__main__":
 
   # run replay
   log_msgs = model_replay(lr, frs)
+
+  import pickle
+  with open('model_outs.pickle', 'wb') as handle:
+    pickle.dump(log_msgs, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
   # get diff
   failed = False
